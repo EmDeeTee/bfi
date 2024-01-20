@@ -32,6 +32,7 @@ void lex_file(FILE* f, INS* out_program) {
 	size_t sp = 0;
 	size_t jmp_ip = 0;
 
+	// NOTE: This stuff should probably check if it didn't overflow the program...
 	while ((c = getc(f)) != EOF) {
 		switch (c)
 		{
