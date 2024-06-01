@@ -1,7 +1,5 @@
 #include <stdio.h>
 
-// I have no idea what's going on... but I did it!
-
 #define PROGRAM_CAPACITY 512
 #define MEMORY_CAPACITY 512
 #define STACK_CAPACITY 512
@@ -16,19 +14,23 @@ typedef enum {
 	JMPL,
 	JMPR,
 	END,
-} OP;
+} Operation;
 
 typedef struct {
 	char operator;
 	int operand;
-} INS;
+} Instruction;
 
-int mem[MEMORY_CAPACITY] = { 0 };
-int stack[STACK_CAPACITY] = { 0 };
+typedef struct {
+	int mem[MEMORY_CAPACITY];
+	int stack[STACK_CAPACITY];
+} Machine;
 
-void lex_file(FILE* f, INS* out_program) {
+Machine g_machine = { 0 };
+
+void lex_file(FILE* f, Instruction* out_program) {
 	char c;
-	size_t pc = 0; // Personal Computer
+	size_t pc = 0; // stands for Personal Computer, of course
 	size_t sp = 0;
 	size_t jmp_ip = 0;
 
@@ -44,12 +46,12 @@ void lex_file(FILE* f, INS* out_program) {
 		case ',': out_program[pc++].operator = INPUT; break;
 		case '[': 
 			out_program[pc].operator = JMPL;
-			stack[sp] = pc;
+			g_machine.stack[sp] = pc;
 			pc++;
 			break;
 		case ']':
 			out_program[pc].operator = JMPR; 
-			jmp_ip = stack[sp];
+			jmp_ip = g_machine.stack[sp];
 			out_program[pc].operand = jmp_ip;
 			out_program[jmp_ip].operand = pc;
 			pc++;
@@ -61,24 +63,23 @@ void lex_file(FILE* f, INS* out_program) {
 	out_program[pc].operator = END;
 }
 
-void interpret_program(INS* program) {
-	size_t ip = 0; // Internet Protocol
+void interpret_program(Instruction* program) {
+	size_t ip = 0; // stands for Internet Protocol, of course
 	size_t sp = 0;
 	size_t ptr = 0;
 
-	// TODO: Implement the `INPUT` instruction
 	while (program[ip].operator != END) {
 		char op = program[ip].operator;
 		switch (op)
 		{
 		case PLUS:
-			mem[ptr]++;
+			g_machine.mem[ptr]++;
 			break;
 		case MINUS:
-			mem[ptr]--;
+			g_machine.mem[ptr]--;
 			break;
 		case PRINT:
-			putchar(mem[ptr]);
+			putchar(g_machine.mem[ptr]);
 			break;
 		case MOVEL:
 			ptr--;
@@ -87,12 +88,21 @@ void interpret_program(INS* program) {
 			ptr++;
 			break;
 		case JMPL:
-			if (!mem[ptr])
+			if (!g_machine.mem[ptr])
 				ip = program[ip].operand;
 			break;
 		case JMPR:
-			if (mem[ptr])
+			if (g_machine.mem[ptr])
 				ip = program[ip].operand;
+			break;
+		case INPUT:
+			printf("Program asked for input: ");
+			float input = 0.0f;
+			if (scanf("%f", &input) != 1) {
+				printf("Input was not in a valid format. (floats only)\n");
+				exit(2);
+			}
+			g_machine.mem[ptr] = input;
 			break;
 		default:
 			printf("Unexpected operation\n");
@@ -104,12 +114,14 @@ void interpret_program(INS* program) {
 }
 
 int main() {
-	INS program[PROGRAM_CAPACITY] = {0};
+	Instruction program[PROGRAM_CAPACITY] = {0};
 	FILE* f = fopen("hw.bf", "r");
 	if (f == NULL) {
 		printf("Can't open file\n");
-		return;
+		return 1;
 	}
 	lex_file(f, &program);
 	interpret_program(&program);
+
+	return 0;
 }
